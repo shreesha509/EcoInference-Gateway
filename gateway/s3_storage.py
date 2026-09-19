@@ -1,6 +1,10 @@
 import os
 
 import boto3
+from dotenv import load_dotenv
+
+
+load_dotenv()
 
 
 S3_BUCKET_NAME = os.getenv("ECOINFERENCE_S3_BUCKET")
