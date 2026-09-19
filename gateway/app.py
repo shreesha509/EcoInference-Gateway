@@ -1,0 +1,78 @@
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+from gateway.cache import find_similar_prompt
+from gateway.impact import calculate_impact
+from gateway.s3_storage import generate_presigned_url
+
+
+app = FastAPI(
+    title="EcoInference Gateway",
+    version="0.1.0",
+)
+
+
+STANDARD_INFERENCE_TIME_SECONDS = 12.0
+
+
+class InferenceRequest(BaseModel):
+    prompt: str
+
+
+@app.get("/health")
+def health_check():
+    return {
+        "status": "ok",
+        "service": "EcoInference Gateway",
+        "version": "0.1.0",
+    }
+
+
+@app.post("/v1/inference/generate")
+def generate(request: InferenceRequest):
+
+    cache_result = find_similar_prompt(request.prompt)
+
+    if cache_result["cache_hit"]:
+        impact = calculate_impact(0)
+
+        standard_impact = calculate_impact(
+            STANDARD_INFERENCE_TIME_SECONDS
+        )
+
+        asset_url = generate_presigned_url(
+            cache_result["asset"]
+        )
+
+        return {
+            "status": "success",
+            "cache_hit": True,
+            "similarity": cache_result["similarity"],
+            "matched_prompt": cache_result["matched_prompt"],
+            "asset": cache_result["asset"],
+            "asset_url": asset_url,
+            "gpu_compute_bypassed": True,
+            "impact": impact,
+            "savings": {
+                "energy_saved_joules": standard_impact["energy_joules"],
+                "water_saved_ml": standard_impact["estimated_water_ml"],
+            },
+        }
+
+    impact = calculate_impact(
+        STANDARD_INFERENCE_TIME_SECONDS
+    )
+
+    return {
+        "status": "success",
+        "cache_hit": False,
+        "similarity": cache_result["similarity"],
+        "matched_prompt": None,
+        "asset": None,
+        "gpu_compute_bypassed": False,
+        "impact": impact,
+        "savings": {
+            "energy_saved_joules": 0.0,
+            "water_saved_ml": 0.0,
+        },
+    }
