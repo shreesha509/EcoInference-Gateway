@@ -8,6 +8,7 @@ RUN pip install --no-cache-dir \
 
 COPY gateway ${LAMBDA_TASK_ROOT}/gateway
 COPY data ${LAMBDA_TASK_ROOT}/data
+COPY models ${LAMBDA_TASK_ROOT}/models
 COPY lambda_handler.py ${LAMBDA_TASK_ROOT}/lambda_handler.py
 
 CMD [ "lambda_handler.handler" ]
