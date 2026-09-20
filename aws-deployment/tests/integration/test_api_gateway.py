@@ -30,16 +30,23 @@ class TestApiGateway:
 
         stacks = response["Stacks"]
         stack_outputs = stacks[0]["Outputs"]
-        api_outputs = [output for output in stack_outputs if output["OutputKey"] == "HelloWorldApi"]
+        api_outputs = [output for output in stack_outputs if output["OutputKey"] == "EcoInferenceApi"]
 
         if not api_outputs:
-            raise KeyError(f"HelloWorldAPI not found in stack {stack_name}")
+            raise KeyError(f"EcoInferenceApi not found in stack {stack_name}")
 
         return api_outputs[0]["OutputValue"]  # Extract url from stack outputs
 
     def test_api_gateway(self, api_gateway_url):
         """ Call the API Gateway endpoint and check the response """
-        response = requests.get(api_gateway_url)
+        response = requests.post(
+            api_gateway_url,
+            json={"prompt": "test prompt"},
+        )
 
         assert response.status_code == 200
-        assert response.json() == {"message": "hello world"}
+        data = response.json()
+        assert data["status"] == "success"
+        assert "cache_hit" in data
+        assert "similarity" in data
+        assert "impact" in data

@@ -7,26 +7,31 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-S3_BUCKET_NAME = os.getenv("ECOINFERENCE_S3_BUCKET")
+_s3_client = None
 
-s3_client = boto3.client("s3")
+
+def _get_s3_client():
+    global _s3_client
+    if _s3_client is None:
+        _s3_client = boto3.client("s3")
+    return _s3_client
 
 
 def generate_presigned_url(
     object_key: str,
     expiration_seconds: int = 3600,
-) -> str:
+) -> str | None:
     """Generate a temporary URL for an S3 object."""
 
-    if not S3_BUCKET_NAME:
-        raise RuntimeError(
-            "ECOINFERENCE_S3_BUCKET environment variable is not set."
-        )
+    bucket_name = os.getenv("ECOINFERENCE_S3_BUCKET")
 
-    return s3_client.generate_presigned_url(
+    if not bucket_name:
+        return None
+
+    return _get_s3_client().generate_presigned_url(
         "get_object",
         Params={
-            "Bucket": S3_BUCKET_NAME,
+            "Bucket": bucket_name,
             "Key": object_key,
         },
         ExpiresIn=expiration_seconds,
