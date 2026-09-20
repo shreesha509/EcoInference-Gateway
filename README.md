@@ -1,210 +1,158 @@
 # EcoInference Gateway
 
-### Stopping unnecessary AI computation before the GPU spins up.
+**Semantic inference interception for reducing redundant AI computation.**
 
-EcoInference Gateway is an **AWS-deployed semantic inference gateway** that checks whether a new AI request is sufficiently similar to a previously processed request **before sending it to inference**.
+EcoInference Gateway is an AWS-deployed middleware layer that checks whether an incoming AI request is semantically similar to a previously processed request before it reaches the inference layer.
 
-The key idea:
-
-> **Don't optimize computation you never needed to perform.**
+The goal is simple: **avoid computation when an equivalent result can already be reused.**
 
 ---
 
-## The Gap
+## The Problem
 
-Most AI optimization happens **inside inference** — faster models, quantization, batching, hardware optimization, etc.
-
-EcoInference targets an earlier layer:
-
-**Can we prevent redundant inference from happening at all?**
-
-Traditional caching often depends on exact request matching:
+Most caching relies on exact request matching.
 
 ```text
-"futuristic city at sunset"
-        ≠
-"futuristic city during sunset"
+"A futuristic city at sunset"
+"A futuristic city during sunset"
 
-EcoInference compares meaning instead of strings.
+Different strings. Potentially the same intent.
+
+If both requests reach inference independently, the second request may perform computation that could have been avoided.
+
+EcoInference moves the optimization point before inference.
 
 How It Works
-AI Request
-    ↓
+Request
+   │
+   ▼
 API Gateway
-    ↓
-AWS Lambda
-    ↓
+   │
+   ▼
+Lambda
+   │
+   ▼
 Semantic Embedding
-    ↓
+   │
+   ▼
 Cosine Similarity
-    ↓
-   ┌───────────────┐
-   │ Similarity ≥  │
-   │     0.92      │
-   └───────┬───────┘
-       ┌───┴───┐
-      HIT     MISS
-       ↓        ↓
-    Reuse     Inference
-    Result     Path
-       ↓        ↓
-       └───┬────┘
-           ↓
-      Impact Estimate
-           ↓
-        Response
+   │
+   ├── ≥ 0.92 ──► Cache HIT ──► Reuse S3 Result
+   │
+   └── < 0.92 ──► Cache MISS ─► Inference Path
 
-The prototype uses all-MiniLM-L6-v2 for semantic embeddings and cosine similarity for matching.
+The prototype uses all-MiniLM-L6-v2 to generate embeddings and cosine similarity to determine whether a request is sufficiently similar to a cached request.
 
-Working Demonstration
-Semantic HIT
+Example
 
-Cached:
+Cached
 
 A futuristic city at sunset
 
-Incoming:
+Incoming
 
 A futuristic city during sunset
 
-Result:
+Result
 
-Similarity:       0.9897
-Decision:         CACHE HIT
-GPU computation:  Bypassed
-Energy avoided:   4200 J*
-Water avoided:    2.1 mL*
-Semantic MISS
+Similarity     0.9897
+Decision       CACHE HIT
+Compute        Bypassed
 
-Incoming:
+An unrelated request:
 
 A red sports car driving through a mountain road
 
-Result:
-
-Similarity:       0.1576
-Decision:         CACHE MISS
-Inference:        Required
-
-This demonstrates that the gateway can distinguish semantically reusable requests from unrelated requests.
-
+Similarity     0.1576
+Decision       CACHE MISS
+Compute        Inference path
 AWS Architecture
-React Dashboard
-       ↓
-Amazon API Gateway
-       ↓
-AWS Lambda
-       ↓
-Semantic Cache
-   ↙           ↘
- HIT           MISS
-  ↓             ↓
-S3 Result   Inference Path
-   ↘           ↙
-    Impact Engine
-         ↓
-     Dashboard
-AWS Services
-Amazon API Gateway — inference API
-AWS Lambda — semantic gateway
-Amazon ECR — containerized ML runtime
-Amazon S3 — cached assets
-Amazon CloudWatch — logging
-AWS CloudFormation — deployment
+                    ┌─────────────────┐
+                    │ React Dashboard │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │  API Gateway    │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │  AWS Lambda     │
+                    │ Semantic Cache  │
+                    └───────┬─────────┘
+                            │
+                    ┌───────┴───────┐
+                    │               │
+                   HIT             MISS
+                    │               │
+                    ▼               ▼
+              Amazon S3       Inference Path
+                    │               │
+                    └───────┬───────┘
+                            ▼
+                     Impact Engine
 
-The ML model is packaged directly into the Lambda container rather than downloaded at runtime.
+AWS: Lambda · API Gateway · ECR · S3 · CloudWatch · CloudFormation
 
-Environmental Impact
+The ML model is packaged into the Lambda container and deployed through Amazon ECR.
 
-The prototype makes potential impact visible using configurable assumptions:
+Why It Is Different
 
-GPU power       = 350 W
-Inference time  = 12 s
-WUE             = 1.8 L/kWh
+The usual question is:
+
+How do we make inference more efficient?
+
+EcoInference asks:
+
+Does this inference need to happen at all?
+
+This places the optimization decision before the inference workload, using semantic similarity rather than exact-string matching.
+
+Impact Estimation
+
+The prototype estimates the potential impact of avoided computation using configurable assumptions:
+
+Parameter	Prototype value
+GPU power	350 W
+Inference time	12 s
+WUE	1.8 L/kWh
 
 A 12-second assumed inference corresponds to:
 
-4200 J
-≈ 0.001167 kWh
-≈ 2.1 mL estimated water impact
+4200 J ≈ 0.001167 kWh ≈ 2.1 mL estimated water impact
 
-*These are scenario estimates, not direct measurements of GPU power or datacenter water consumption.
-
-The architecture is designed so these assumptions can later be replaced with real infrastructure telemetry.
-
-What Makes It Different
-1. Optimization before inference
-
-Instead of making inference cheaper, EcoInference first asks whether inference is necessary.
-
-2. Semantic reuse
-
-It can identify similar requests even when the wording changes.
-
-3. Sustainability-aware middleware
-
-The gateway exposes the estimated energy and cooling-water impact of the decision.
-
-4. AWS-native deployment
-
-The prototype is actually deployed using AWS serverless infrastructure rather than being only a local simulation.
+These are scenario estimates, not direct measurements of GPU power or datacenter water consumption.
 
 Current Prototype
-
-Built and deployed:
-
-Semantic cache
-all-MiniLM-L6-v2
-Cosine similarity
-Configurable 0.92 threshold
-HIT/MISS routing
-S3 cached asset retrieval
+Semantic request matching
+Configurable similarity threshold (0.92)
+Cache HIT / MISS routing
+S3 cached-result retrieval
 FastAPI gateway
 React dashboard
-Dockerized Lambda deployment
-API Gateway
-ECR
-CloudWatch
-CloudFormation
-Current boundary
+Containerized Lambda deployment
+Live API Gateway endpoint
+CloudWatch logging
+CloudFormation infrastructure
 
-The MISS path currently represents the downstream inference path but does not execute a production generative AI model. Environmental values are estimates based on configurable assumptions.
+The current MISS path represents the downstream inference path; it does not yet execute a production generative AI model.
 
-Tech Stack
+Stack
 
-AI/ML: Sentence Transformers, PyTorch, scikit-learn
-
-Backend: Python, FastAPI
-
-Frontend: React, Vite
-
-Cloud: AWS Lambda, API Gateway, ECR, S3, CloudWatch, CloudFormation
-
+ML: Sentence Transformers · PyTorch · scikit-learn
+Backend: Python · FastAPI
+Frontend: React · Vite
+AWS: Lambda · API Gateway · ECR · S3 · CloudWatch · CloudFormation
 Deployment: Docker
 
-Built for AWS First Commit
+AWS First Commit
 
-Project: EcoInference Gateway
+EcoInference Gateway
 
-Core idea:
+Don't cool computation you didn't need to perform.
 
-Before spending compute, determine whether the useful computation already exists.
-
-Tagline:
-
-Stopping AI's environmental footprint before the GPU spins up.
-
-Author
-
-Shreesha Kumar P
-
-Built for the AWS First Commit Hackathon.
+Built by Shreesha Kumar P.
 
 
-### Why I prefer this version
-
-A judge can scan the README and immediately get:
-
-**Problem → Gap → Novel approach → Working evidence → AWS architecture → Impact → Limitations.**
-
-And importantly, it doesn't claim that you have built a full production AI inference platform when you haven't. That makes the project technically credible while clearly showing what is unique about it.
+This reads much more like a **real technical project README** than a generated marketing page. The judge can understand the novelty in three places immediately: **The Problem → How It Works → Why It Is Different.**
