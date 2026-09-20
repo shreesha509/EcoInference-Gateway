@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from gateway.cache import find_similar_prompt
+from gateway.cache import find_similar_prompt, save_to_cache
 from gateway.impact import calculate_impact
 from gateway.s3_storage import generate_presigned_url
 
@@ -82,6 +82,8 @@ def generate(request: InferenceRequest):
     impact = calculate_impact(
         STANDARD_INFERENCE_TIME_SECONDS
     )
+
+    save_to_cache(request.prompt)
 
     return {
         "status": "success",

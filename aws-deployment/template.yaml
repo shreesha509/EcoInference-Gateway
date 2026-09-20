@@ -33,7 +33,11 @@ Resources:
         - x86_64
 
       Events:
-
+        HealthCheck:
+          Type: Api
+          Properties:
+            Path: /health
+            Method: get
         InferenceApi:
           Type: Api
           Properties:
