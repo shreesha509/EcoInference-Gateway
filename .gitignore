@@ -1,5 +1,7 @@
 venv/
+.venv/
 __pycache__/
 *.pyc
 .env
-.venv/
+.aws-sam/
+torch-test/

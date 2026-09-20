@@ -1,0 +1,39 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Description: EcoInference Gateway - serverless AI inference gateway
+
+Resources:
+  EcoInferenceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      ImageUri: 445617516409.dkr.ecr.ap-south-1.amazonaws.com/ecoinference-gateway:lambda
+      Timeout: 120
+      MemorySize: 3008
+      Environment:
+        Variables:
+          ECOINFERENCE_S3_BUCKET: ecoinference-gateway-445617516409-ap-south-1
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+              Resource: !Sub "arn:${AWS::Partition}:s3:::ecoinference-gateway-445617516409-ap-south-1/*"
+      Architectures:
+        - x86_64
+      Events:
+        InferenceApi:
+          Type: Api
+          Properties:
+            Path: /v1/inference/generate
+            Method: post
+
+Outputs:
+  EcoInferenceApi:
+    Description: API Gateway endpoint for EcoInference Gateway
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/v1/inference/generate"
+
+  EcoInferenceFunction:
+    Description: EcoInference Lambda Function ARN
+    Value: !GetAtt EcoInferenceFunction.Arn

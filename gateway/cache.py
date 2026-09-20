@@ -5,7 +5,7 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
 
-MODEL_NAME = "all-MiniLM-L6-v2"
+MODEL_NAME = str(PROJECT_ROOT / "models" / "all-MiniLM-L6-v2")
 SIMILARITY_THRESHOLD = 0.92
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
