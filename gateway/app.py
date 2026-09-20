@@ -18,6 +18,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -47,6 +49,7 @@ def generate(request: InferenceRequest):
     cache_result = find_similar_prompt(request.prompt)
 
     if cache_result["cache_hit"]:
+
         impact = calculate_impact(0)
 
         standard_impact = calculate_impact(
@@ -67,8 +70,12 @@ def generate(request: InferenceRequest):
             "gpu_compute_bypassed": True,
             "impact": impact,
             "savings": {
-                "energy_saved_joules": standard_impact["energy_joules"],
-                "water_saved_ml": standard_impact["estimated_water_ml"],
+                "energy_saved_joules": standard_impact[
+                    "energy_joules"
+                ],
+                "water_saved_ml": standard_impact[
+                    "estimated_water_ml"
+                ],
             },
         }
 

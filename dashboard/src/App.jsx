@@ -1,7 +1,8 @@
 import { useState } from "react";
 import "./App.css";
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL =
+  "https://8ypsvj1nv5.execute-api.ap-south-1.amazonaws.com/Prod";
 
 function App() {
   const [prompt, setPrompt] = useState("");
@@ -33,14 +34,19 @@ function App() {
       );
 
       if (!response.ok) {
-        throw new Error(`Gateway returned HTTP ${response.status}`);
+        throw new Error(
+          `Gateway returned HTTP ${response.status}`
+        );
       }
 
       const data = await response.json();
+
       setResult(data);
     } catch (err) {
+      console.error("EcoInference request failed:", err);
+
       setError(
-        "Could not connect to the EcoInference Gateway. Make sure the FastAPI server is running."
+        `Request failed: ${err.message || "Unknown error"}`
       );
     } finally {
       setLoading(false);
@@ -52,7 +58,9 @@ function App() {
       <header className="header">
         <div>
           <p className="eyebrow">AI SUSTAINABILITY GATEWAY</p>
+
           <h1>EcoInference</h1>
+
           <p className="subtitle">
             Don't cool computation you didn't need to perform.
           </p>
@@ -67,11 +75,13 @@ function App() {
       <section className="hero">
         <div>
           <p className="section-label">INFERENCE REQUEST</p>
+
           <h2>Intercept before inference.</h2>
+
           <p className="description">
-            Submit an AI prompt. EcoInference checks whether a semantically
-            similar result already exists before allowing another inference
-            execution.
+            Submit an AI prompt. EcoInference checks whether a
+            semantically similar result already exists before
+            allowing another inference execution.
           </p>
         </div>
 
@@ -99,6 +109,7 @@ function App() {
           <div className="result-header">
             <div>
               <p className="section-label">GATEWAY DECISION</p>
+
               <h2>
                 {result.cache_hit
                   ? "Inference bypassed"
@@ -118,11 +129,15 @@ function App() {
           <div className="metrics">
             <div className="metric">
               <span>Similarity</span>
-              <strong>{result.similarity}</strong>
+
+              <strong>
+                {result.similarity}
+              </strong>
             </div>
 
             <div className="metric">
               <span>GPU compute</span>
+
               <strong>
                 {result.gpu_compute_bypassed
                   ? "Bypassed"
@@ -132,6 +147,7 @@ function App() {
 
             <div className="metric">
               <span>Energy impact</span>
+
               <strong>
                 {result.impact.energy_joules} J
               </strong>
@@ -139,6 +155,7 @@ function App() {
 
             <div className="metric">
               <span>Estimated water</span>
+
               <strong>
                 {result.impact.estimated_water_ml} mL
               </strong>
@@ -149,13 +166,17 @@ function App() {
             <div className="savings">
               <div>
                 <span>Estimated energy avoided</span>
+
                 <strong>
                   {result.savings.energy_saved_joules} J
                 </strong>
               </div>
 
               <div>
-                <span>Estimated cooling water avoided</span>
+                <span>
+                  Estimated cooling water avoided
+                </span>
+
                 <strong>
                   {result.savings.water_saved_ml} mL
                 </strong>
@@ -166,14 +187,19 @@ function App() {
           <div className="technical">
             <div>
               <span>Matched prompt</span>
+
               <p>
-                {result.matched_prompt || "No semantic match found"}
+                {result.matched_prompt ||
+                  "No semantic match found"}
               </p>
             </div>
 
             <div>
               <span>Cached asset</span>
-              <p>{result.asset || "None"}</p>
+
+              <p>
+                {result.asset || "None"}
+              </p>
             </div>
           </div>
 
