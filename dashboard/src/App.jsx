@@ -145,18 +145,26 @@ function App() {
             </div>
 
             <div className="metric">
-              <span>Energy impact</span>
+              <span>Energy</span>
 
               <strong>
-                {result.impact.energy_joules} J
+                {result.impact.energy_kwh} kWh
               </strong>
             </div>
 
             <div className="metric">
-              <span>Estimated water</span>
+              <span>Cooling water</span>
 
               <strong>
-                {result.impact.estimated_water_ml} mL
+                {result.impact.water_ml} mL
+              </strong>
+            </div>
+
+            <div className="metric">
+              <span>CO2 emissions</span>
+
+              <strong>
+                {result.impact.co2_grams} g
               </strong>
             </div>
           </div>
@@ -164,20 +172,26 @@ function App() {
           {result.cache_hit && (
             <div className="savings">
               <div>
-                <span>Estimated energy avoided</span>
+                <span>Energy avoided</span>
 
                 <strong>
-                  {result.savings.energy_saved_joules} J
+                  {result.savings.energy_saved_kwh} kWh
                 </strong>
               </div>
 
               <div>
-                <span>
-                  Estimated cooling water avoided
-                </span>
+                <span>Cooling water avoided</span>
 
                 <strong>
                   {result.savings.water_saved_ml} mL
+                </strong>
+              </div>
+
+              <div>
+                <span>CO2 avoided</span>
+
+                <strong>
+                  {result.savings.co2_saved_grams} g
                 </strong>
               </div>
             </div>
