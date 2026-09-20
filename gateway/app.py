@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from gateway.cache import find_similar_prompt, save_to_cache
-from gateway.impact import calculate_impact
+from gateway.impact import calculate_impact, estimate_inference_time
 from gateway.s3_storage import generate_presigned_url
 
 
@@ -27,7 +27,7 @@ app.add_middleware(
 )
 
 
-STANDARD_INFERENCE_TIME_SECONDS = 12.0
+STANDARD_INFERENCE_TIME_SECONDS = 15.0
 
 
 class InferenceRequest(BaseModel):
@@ -73,15 +73,21 @@ def generate(request: InferenceRequest):
                 "energy_saved_joules": standard_impact[
                     "energy_joules"
                 ],
+                "energy_saved_kwh": standard_impact[
+                    "energy_kwh"
+                ],
                 "water_saved_ml": standard_impact[
-                    "estimated_water_ml"
+                    "water_ml"
+                ],
+                "co2_saved_grams": standard_impact[
+                    "co2_grams"
                 ],
             },
         }
 
-    impact = calculate_impact(
-        STANDARD_INFERENCE_TIME_SECONDS
-    )
+    inference_time = estimate_inference_time()
+
+    impact = calculate_impact(inference_time)
 
     save_to_cache(request.prompt)
 
